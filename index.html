@@ -85,7 +85,7 @@ button.sm{padding:4px 9px;font-size:12px}
 
 <div id="app">
 <header class="top">
-  <h1>ระบบออกใบเสร็จรับเงิน <small style="font-weight:400;opacity:.7;font-size:12px">เวอร์ชัน 18</small></h1>
+  <h1>ระบบออกใบเสร็จรับเงิน <small style="font-weight:400;opacity:.7;font-size:12px">เวอร์ชัน 19</small></h1>
   <button class="sec sm" id="bSaveDraft">💾 บันทึกฉบับร่าง</button>
   <button class="sec sm" id="bOpenDraft">📂 เปิดฉบับร่าง</button>
   <button class="sec sm" id="bClear">ล้างใบนี้</button>
@@ -215,7 +215,9 @@ const PW = '2026';
 const BANKS=["ธนาคารไทยพาณิชย์", "ธนาคารกสิกรไทย", "ธนาคารกรุงไทย", "ธนาคารกรุงเทพ", "ธนาคารทหารไทยธนชาต", "ธนาคารกรุงศรีอยุธยา", "ธนาคารยูโอบี", "ธนาคารออมสิน", "ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร (ธ.ก.ส.)", "ธนาคารอาคารสงเคราะห์", "ธนาคารเกียรตินาคินภัทร", "ธนาคารซีไอเอ็มบี ไทย", "ธนาคารทิสโก้", "ธนาคารแลนด์ แอนด์ เฮ้าส์", "ธนาคารสแตนดาร์ดชาร์เตอร์ด (ไทย)", "ธนาคารไทยเครดิต", "ธนาคารไอซีบีซี (ไทย)", "ธนาคารอิสลามแห่งประเทศไทย", "ธนาคารเพื่อการส่งออกและนำเข้าแห่งประเทศไทย", "ธนาคารพัฒนาวิสาหกิจขนาดกลางและขนาดย่อมแห่งประเทศไทย", "ธนาคารซูมิโตโม มิตซุย ทรัสต์ (ไทย)", "ธนาคารมิซูโฮ"];
 const PAYERS=[
  {l:'บจก.แสงชัย อีควิพเม้นท์ (1984)',n:'บจก.แสงชัย อีควิพเม้นท์ (1984)',x:'0105559044775',a:'88 อาคาร A ชั้น 2-3 ถนนบรมราชชนนี แขวงฉิมพลี เขตตลิ่งชัน กทม. 10170'},
- {l:'บริษัท แสงชัยอีควิพเม้นท์ จำกัด',n:'บริษัท แสงชัยอีควิพเม้นท์ จำกัด',x:'',a:''},
+ {l:'บริษัท แสงชัยอีควิพเม้นท์ จำกัด',n:'บริษัท แสงชัยอีควิพเม้นท์ จำกัด',x:'0105547098271',a:'88 อาคารบี ชั้น 3 ถนนบรมราชชนนี แขวงฉิมพลี เขตตลิ่งชัน กรุงเทพมหานคร 10170'},
+ {l:'บริษัท เอสคอร์ป จำกัด',n:'บริษัท เอสคอร์ป จำกัด',x:'0105549112981',a:'88 อาคารเอ ชั้น 3 ถนนบรมราชชนนี แขวงฉิมพลี เขตตลิ่งชัน กรุงเทพมหานคร 10170'},
+ {l:'บริษัท แสงชัยรีฟริเจอเรชั่น จำกัด',n:'บริษัท แสงชัยรีฟริเจอเรชั่น จำกัด',x:'0105543069315',a:'88 อาคารบี ชั้น 1 ถนนบรมราชชนนี แขวงฉิมพลี เขตตลิ่งชัน กรุงเทพมหานคร 10170'},
  {l:'กำหนดเอง',n:'',x:'',a:''}];
 const ITEM_GROUPS=[
  ['Point 2568 (ไตรมาส)',[
@@ -343,7 +345,7 @@ function start(){
   document.querySelectorAll('.amt').forEach(a=>a.addEventListener('blur',()=>{const s=toSat(a.value);if(a.value.trim())a.value=fmt(s)}));
   loadSample(true);render();docs=[collect()];cur=0;renderBar();
 }
-function applyPayer(i){const p=payers()[i]||PAYERS[2];$('p_n').value=p.n;$('p_x').value=p.x;$('p_a').value=p.a}
+function applyPayer(i){const p=payers()[i]||PAYERS[PAYERS.length-1];$('p_n').value=p.n;$('p_x').value=p.x;$('p_a').value=p.a}
 
 /* ---------- customer search ---------- */
 const cl=$('clist');let cIdx=-1,cRes=[];
@@ -608,7 +610,7 @@ $('fCust').addEventListener('change',async e=>{
 /* ---------- payer database ---------- */
 let MYP=[];
 try{MYP=JSON.parse(store.get('rc_payers')||'[]')}catch(e){MYP=[]}
-function payers(){return PAYERS.slice(0,2).concat(MYP.map(p=>({...p,l:'★ '+p.n})),[PAYERS[2]])}
+function payers(){const B=PAYERS.slice(0,-1);return B.concat(MYP.filter(m=>!B.some(b=>b.n===m.n&&b.x===m.x&&b.a===m.a)).map(p=>({...p,l:'★ '+p.n})),[PAYERS[PAYERS.length-1]])}
 function fillPayerSel(v){$('payerSel').innerHTML=payers().map((p,i)=>`<option value="${i}">${esc(p.l)}</option>`).join('');$('payerSel').value=String(v)}
 function curPayer(){return {n:$('p_n').value.trim(),x:$('p_x').value.trim(),a:$('p_a').value.trim()}}
 function persistMYP(){try{localStorage.setItem('rc_payers',JSON.stringify(MYP))}catch(e){toast('เบราว์เซอร์นี้เก็บข้อมูลถาวรไม่ได้ — ใช้ "ส่งออก" เก็บไฟล์ไว้แทน')}}
@@ -618,7 +620,7 @@ $('payerSel').addEventListener('change',refreshDelPay);
 $('bSavePay').onclick=()=>{
   const p=curPayer();if(!p.n){toast('กรุณากรอกชื่อผู้จ่ายเงินก่อน');return}
   const i=MYP.findIndex(m=>m.n===p.n);let r='updated';if(i>=0)MYP[i]=p;else{MYP.push(p);r='added'}
-  persistMYP();const idx=2+MYP.findIndex(m=>m.n===p.n);fillPayerSel(idx);refreshDelPay();
+  persistMYP();const idx=Math.max(0,payers().findIndex(q=>q.n===p.n&&q.x===p.x&&q.a===p.a));fillPayerSel(idx);refreshDelPay();
   toast(r==='added'?'เพิ่มผู้จ่ายเงินเข้าฐานข้อมูลแล้ว':'อัปเดตผู้จ่ายเงินในฐานแล้ว');
 };
 $('bDelPay').onclick=()=>{const n=$('p_n').value.trim();MYP=MYP.filter(m=>m.n!==n);persistMYP();fillPayerSel(payers().length-1);refreshDelPay();toast('ลบออกจากฐานแล้ว')};
@@ -732,7 +734,7 @@ function applyDraft(d){
   ['date','t_date'].forEach(id=>{if(/^\d{4}-\d\d-\d\d$/.test($(id).value))$(id).value=isoToBE($(id).value)});
   const T=document.querySelectorAll('.itxt'),A=document.querySelectorAll('.amt');
   T.forEach((e,i)=>{e.value=(d.items&&d.items[i]&&d.items[i].t)||''});A.forEach((e,i)=>{e.value=(d.items&&d.items[i]&&d.items[i].a)||''});
-  if(!payers()[+$('payerSel').value])$('payerSel').value=String(payers().length-1);
+  {const L=payers(),k=L.findIndex(q=>q.n&&q.n===$('p_n').value.trim()&&q.x===$('p_x').value.trim()&&q.a===$('p_a').value.trim());$('payerSel').value=String(k>=0?k:L.length-1)}
   lastDate=$('date').value;updDate();onChange();refreshDel();refreshDelPay();
 }
 $('bSaveDraft').onclick=()=>{
