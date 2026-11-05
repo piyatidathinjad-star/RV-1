@@ -85,15 +85,15 @@ button.sm{padding:4px 9px;font-size:12px}
 
 <div id="app">
 <header class="top">
-  <h1>ระบบออกใบเสร็จรับเงิน <small style="font-weight:400;opacity:.7;font-size:12px">เวอร์ชัน 19</small></h1>
+  <h1>ระบบออกใบเสร็จรับเงิน <small style="font-weight:400;opacity:.7;font-size:12px">เวอร์ชัน 21</small></h1>
   <button class="sec sm" id="bSaveDraft">💾 บันทึกฉบับร่าง</button>
   <button class="sec sm" id="bOpenDraft">📂 เปิดฉบับร่าง</button>
   <button class="sec sm" id="bClear">ล้างใบนี้</button>
   <button class="sec sm" id="bSample">ตัวอย่าง</button>
   <button class="sec sm" id="bLock">ล็อก</button>
   <input type="file" id="fDraft" accept=".json,application/json" hidden>
-  <input type="file" id="fCust" accept=".json,application/json" hidden>
-  <input type="file" id="fPay" accept=".json,application/json" hidden>
+  <input type="file" id="fCust" accept=".xlsx,.xls,.json" hidden>
+  <input type="file" id="fPay" accept=".xlsx,.xls,.json" hidden>
 </header>
 
 <div class="wrap">
@@ -136,11 +136,10 @@ button.sm{padding:4px 9px;font-size:12px}
     <div class="row" style="margin-top:10px;flex-wrap:wrap">
       <button class="sec sm" id="bSaveCust">＋ บันทึกลูกค้านี้เข้าฐานข้อมูล</button>
       <button class="sec sm" id="bDelCust" style="display:none">ลบออกจากฐาน</button>
-      <button class="sec sm" id="bXlsCust">ส่งออกฐานลูกค้าทั้งหมด (Excel)</button>
-      <button class="sec sm" id="bExpCust">สำรองฐานที่เพิ่มเอง (.json)</button>
-      <button class="sec sm" id="bImpCust">นำเข้าฐาน</button>
+      <button class="sec sm" id="bXlsCust">ส่งออกฐานลูกค้า (Excel)</button>
+      <button class="sec sm" id="bImpCust">นำเข้าฐาน (Excel .xls/.xlsx)</button>
     </div>
-    <div class="hint">ลูกค้าที่เพิ่มเองเก็บไว้ในเบราว์เซอร์นี้ และขึ้นก่อนในผลค้นหา (ติดป้าย ★) — แนะนำกด "ส่งออก" เก็บสำรองไว้ด้วย</div>
+    <div class="hint">ลูกค้าที่เพิ่มเองเก็บไว้ในเบราว์เซอร์นี้ และขึ้นก่อนในผลค้นหา (ติดป้าย ★) — แนะนำกด "ส่งออกฐานลูกค้า (Excel)" เก็บสำรองไว้ด้วย</div>
   </div>
 
   <div class="panel"><h2><span class="n">3</span>ผู้จ่ายเงิน</h2>
@@ -153,8 +152,8 @@ button.sm{padding:4px 9px;font-size:12px}
     <div class="row" style="margin-top:10px;flex-wrap:wrap">
       <button class="sec sm" id="bSavePay">＋ บันทึกผู้จ่ายเงินนี้เข้าฐานข้อมูล</button>
       <button class="sec sm" id="bDelPay" style="display:none">ลบออกจากฐาน</button>
-      <button class="sec sm" id="bExpPay">ส่งออก</button>
-      <button class="sec sm" id="bImpPay">นำเข้า</button>
+      <button class="sec sm" id="bExpPay">ส่งออก (Excel)</button>
+      <button class="sec sm" id="bImpPay">นำเข้า (Excel)</button>
     </div>
     <div class="hint">ผู้จ่ายเงินที่บันทึกไว้ขึ้นในดรอปดาวน์ด้านบน (ติดป้าย ★)</div>
   </div>
@@ -581,30 +580,64 @@ $('bSaveCust').onclick=()=>{
   const r=upsert(c);updDate();persistMY();updCount();refreshDel();toast(r==='added'?'เพิ่มลูกค้าเข้าฐานข้อมูลแล้ว':'อัปเดตข้อมูลลูกค้าในฐานแล้ว');
 };
 $('bDelCust').onclick=()=>{const n=$('c_n').value.trim();MY=MY.filter(m=>m.n!==n);persistMY();updCount();refreshDel();toast('ลบออกจากฐานที่เพิ่มเองแล้ว')};
-$('bExpCust').onclick=()=>{
-  if(!MY.length){toast('ยังไม่มีลูกค้าที่เพิ่มเอง');return}
-  saveFile('ฐานลูกค้าที่เพิ่มเอง.json','json','application/json',async()=>new Blob([JSON.stringify(MY,null,1)],{type:'application/json'}));
-};
-$('bXlsCust').onclick=()=>{
+/* ---------- Excel helpers ---------- */
+const XLSX_MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+function saveXlsx(filename,sheet,hdr,rows,widths){
   if(!window.XLSX){toast('โหลดไลบรารี Excel ไม่ได้ (ต้องต่ออินเทอร์เน็ต)');return}
-  const hdr=['รายชื่อ','ที่อยู่เลขที่','ตรอก/ซอย','ถนน','แขวง/ตำบล','เขต/อำเภอ','จังหวัด','รหัสไปรษณีย์','เลขประจำตัวผู้เสียภาษี','วันที่เพิ่มข้อมูล','ที่มา'];
-  const rows=allCust().map(c=>[c.n,c.h,c.s,c.r,c.t,c.d,c.p,c.z||zipLookup(c.p,c.d,c.t),c.x,c.a?thShort(c.a):'',c.m?'เพิ่มเอง':'ไฟล์ Excel เดิม']);
-  saveFile('ฐานลูกค้า.xlsx','xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',async()=>{
+  return saveFile(filename,'xlsx',XLSX_MIME,async()=>{
     const ws=XLSX.utils.aoa_to_sheet([hdr].concat(rows).map(r=>r.map(v=>String(v==null?'':v))));
     Object.keys(ws).forEach(k=>{if(k[0]!=='!'){ws[k].t='s';ws[k].v=String(ws[k].v);delete ws[k].z}});
-    ws['!cols']=[44,22,22,22,18,20,18,12,20,16,14].map(w=>({wch:w}));
-    ws['!autofilter']={ref:ws['!ref']};
-    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'ฐานลูกค้า');
-    return new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    ws['!cols']=widths.map(w=>({wch:w}));ws['!autofilter']={ref:ws['!ref']};
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheet);
+    return new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:XLSX_MIME});
   });
-};
+}
+async function readRows(f){
+  if(/\.json$/i.test(f.name))return JSON.parse(await f.text());
+  if(!window.XLSX)throw new Error('โหลดไลบรารี Excel ไม่ได้ (ต้องต่ออินเทอร์เน็ต)');
+  const wb=XLSX.read(await f.arrayBuffer(),{type:'array',raw:true});
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
+}
+const cellStr=v=>{if(v==null||v instanceof Date)return '';let s=typeof v==='number'?String(Number.isInteger(v)?v:v):String(v);s=s.replace(/\s+/g,' ').trim();return s==='-'?'':s};
+// rows: array of arrays (Excel) or array of objects (json) -> array of objects with keys from map
+function tableToObjs(rows,map,order){
+  if(!Array.isArray(rows))throw new Error('bad');
+  if(rows.length&&!Array.isArray(rows[0]))return rows.map(o=>{const r={};Object.values(map).forEach(k=>r[k]=cellStr(o[k]));return r});
+  const head=(rows[0]||[]).map(h=>String(h||'').trim());
+  const hasHead=head.some(h=>map[h]);
+  const idx=hasHead?head.map(h=>map[h]||null):order;
+  return rows.slice(hasHead?1:0).map(r=>{const o={};idx.forEach((k,i)=>{if(k)o[k]=cellStr(r[i])});return o});
+}
+const CMAP={'รายชื่อ':'n','ชื่อ':'n','ที่อยู่เลขที่':'h','ตรอก/ซอย':'s','ถนน':'r','แขวง/ตำบล':'t','เขต/อำเภอ':'d','จังหวัด':'p','รหัสไปรษณีย์':'z','เลขประจำตัวผู้เสียภาษี':'x','วันที่เพิ่มข้อมูล':'a'};
+const PMAP={'ชื่อผู้จ่ายเงิน':'n','ชื่อ':'n','รายชื่อ':'n','เลขประจำตัวผู้เสียภาษี':'x','ที่อยู่':'a'};
+function normCust(o,pad){
+  const c={};CK.forEach(k=>c[k]=cellStr(o[k]));
+  if(pad&&/^\d{12}$/.test(c.x))c.x='0'+c.x;
+  if(/^\d{3,4}$/.test(c.z))c.z=c.z.padStart(5,'0');
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(c.a))c.a=beToISO(c.a);else if(!/^\d{4}-\d\d-\d\d$/.test(c.a))c.a='';
+  return c;
+}
+const custKey=c=>[c.n,c.h,c.s,c.r,c.t,c.d,c.p,c.x].join('\u0001');
+$('bXlsCust').onclick=()=>saveXlsx('ฐานลูกค้า.xlsx','ฐานลูกค้า',
+  ['รายชื่อ','ที่อยู่เลขที่','ตรอก/ซอย','ถนน','แขวง/ตำบล','เขต/อำเภอ','จังหวัด','รหัสไปรษณีย์','เลขประจำตัวผู้เสียภาษี','วันที่เพิ่มข้อมูล','ที่มา'],
+  allCust().map(c=>[c.n,c.h,c.s,c.r,c.t,c.d,c.p,c.z||zipLookup(c.p,c.d,c.t),c.x,c.a?thShort(c.a):'',c.m?'เพิ่มเอง':'ไฟล์ Excel เดิม']),
+  [44,22,22,22,18,20,18,12,20,16,14]);
 $('bImpCust').onclick=()=>$('fCust').click();
 $('fCust').addEventListener('change',async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
-  try{const arr=JSON.parse(await f.text());if(!Array.isArray(arr))throw 0;let n=0;
-    arr.forEach(o=>{if(o&&o.n){const c={};CK.forEach(k=>c[k]=String(o[k]||''));upsert(c);n++}});
-    persistMY();updCount();refreshDel();toast(`นำเข้าแล้ว ${n} ราย`)}
-  catch(err){toast('ไฟล์ฐานลูกค้าไม่ถูกต้อง')}
+  try{
+    const objs=tableToObjs(await readRows(f),CMAP,['n','h','s','r','t','d','p','z','x','a']);
+    const base=new Set(CUST.map(custKey));let add=0,upd=0,skip=0;
+    objs.forEach(o=>{
+      const c0=normCust(o,false);if(!c0.n){return}
+      if(base.has(custKey(c0))&&!MY.some(m=>m.n===c0.n)){skip++;return}
+      const c=normCust(o,true);
+      const old=MY.find(m=>m.n===c.n);if(old&&!c.a)c.a=old.a||'';if(!c.a)c.a=todayISO();
+      upsert(c)==='added'?add++:upd++;
+    });
+    persistMY();updCount();refreshDel();
+    toast(`นำเข้าแล้ว: เพิ่มใหม่ ${add} · อัปเดต ${upd} · ข้าม ${skip} (ซ้ำกับข้อมูลเดิม)`);
+  }catch(err){toast('ไฟล์ฐานลูกค้าไม่ถูกต้อง'+(err&&err.message&&err.message!=='bad'?' — '+err.message:''))}
 });
 
 /* ---------- payer database ---------- */
@@ -625,16 +658,25 @@ $('bSavePay').onclick=()=>{
 };
 $('bDelPay').onclick=()=>{const n=$('p_n').value.trim();MYP=MYP.filter(m=>m.n!==n);persistMYP();fillPayerSel(payers().length-1);refreshDelPay();toast('ลบออกจากฐานแล้ว')};
 $('bExpPay').onclick=()=>{
-  if(!MYP.length){toast('ยังไม่มีผู้จ่ายเงินที่เพิ่มเอง');return}
-  saveFile('ฐานผู้จ่ายเงิน.json','json','application/json',async()=>new Blob([JSON.stringify(MYP,null,1)],{type:'application/json'}));
+  const B=PAYERS.slice(0,-1);
+  const rows=B.map(p=>[p.n,p.x,p.a,'ในระบบ']).concat(MYP.filter(m=>!B.some(b=>b.n===m.n&&b.x===m.x&&b.a===m.a)).map(p=>[p.n,p.x,p.a,'เพิ่มเอง']));
+  saveXlsx('ฐานผู้จ่ายเงิน.xlsx','ฐานผู้จ่ายเงิน',['ชื่อผู้จ่ายเงิน','เลขประจำตัวผู้เสียภาษี','ที่อยู่','ที่มา'],rows,[44,22,80,12]);
 };
 $('bImpPay').onclick=()=>$('fPay').click();
 $('fPay').addEventListener('change',async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
-  try{const arr=JSON.parse(await f.text());if(!Array.isArray(arr))throw 0;let n=0;
-    arr.forEach(o=>{if(o&&o.n){const p={n:String(o.n),x:String(o.x||''),a:String(o.a||'')};const i=MYP.findIndex(m=>m.n===p.n);if(i>=0)MYP[i]=p;else MYP.push(p);n++}});
-    persistMYP();fillPayerSel($('payerSel').value);refreshDelPay();toast(`นำเข้าแล้ว ${n} ราย`)}
-  catch(err){toast('ไฟล์ฐานผู้จ่ายเงินไม่ถูกต้อง')}
+  try{
+    const objs=tableToObjs(await readRows(f),PMAP,['n','x','a']);
+    const B=PAYERS.slice(0,-1);let add=0,upd=0,skip=0;
+    objs.forEach(o=>{
+      const p={n:cellStr(o.n),x:cellStr(o.x),a:cellStr(o.a)};if(!p.n)return;
+      if(/^\d{12}$/.test(p.x))p.x='0'+p.x;
+      if(B.some(b=>b.n===p.n&&b.x===p.x&&b.a===p.a)){skip++;return}
+      const i=MYP.findIndex(m=>m.n===p.n);if(i>=0){MYP[i]=p;upd++}else{MYP.push(p);add++}
+    });
+    persistMYP();fillPayerSel($('payerSel').value);refreshDelPay();
+    toast(`นำเข้าแล้ว: เพิ่มใหม่ ${add} · อัปเดต ${upd} · ข้าม ${skip} (ซ้ำกับข้อมูลเดิม)`);
+  }catch(err){toast('ไฟล์ฐานผู้จ่ายเงินไม่ถูกต้อง'+(err&&err.message&&err.message!=='bad'?' — '+err.message:''))}
 });
 
 /* ---------- save helpers ---------- */
